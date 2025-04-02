@@ -350,147 +350,152 @@ function createWeekTemplate(weekNumber, date = null) {
     return week;
 }
 
-// Function to fetch menu data from GitHub
-async function fetchMenuData() {
+// Import Firebase database
+import { database } from './firebase-config.js';
+
+// Function to load menu data from Firebase
+async function loadMenuData() {
     try {
-        const response = await fetch('https://raw.githubusercontent.com/Squidy33/daycare/main/data/menu.json');
-        const data = await response.json();
-        return data.week;
+        const snapshot = await database.ref('menu').once('value');
+        const menuData = snapshot.val();
+        
+        if (menuData) {
+            const menuWeeks = document.getElementById('menu-weeks');
+            menuWeeks.innerHTML = ''; // Clear existing weeks
+            
+            // Create weeks based on Firebase data
+            Object.keys(menuData).forEach((weekKey, index) => {
+                const weekData = menuData[weekKey];
+                const week = createWeekTemplate(index + 1, weekData.date);
+                
+                // Add delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-week';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.onclick = async () => {
+                    week.remove();
+                    await saveMenuData(); // Save to Firebase after deletion
+                };
+                week.appendChild(deleteBtn);
+                
+                // Set menu items from Firebase data
+                Object.keys(weekData.items).forEach(day => {
+                    const dayData = weekData.items[day];
+                    const dayElement = week.querySelector(`[data-day="${day}"]`);
+                    if (dayElement) {
+                        dayElement.querySelector('[data-meal="morning"]').textContent = dayData.breakfast;
+                        dayElement.querySelector('[data-meal="lunch"]').textContent = dayData.lunch;
+                        dayElement.querySelector('[data-meal="afternoon"]').textContent = dayData.snack;
+                    }
+                });
+                
+                menuWeeks.appendChild(week);
+            });
+            
+            updateMenuEditButtons();
+        }
     } catch (error) {
-        console.error('Error fetching menu data:', error);
-        return null;
+        console.error('Error loading menu data:', error);
+        showErrorMessage('Error loading menu data. Please try again.');
     }
 }
 
-// Function to load menu data
-async function loadMenuData() {
-    const menuData = await fetchMenuData();
-    if (menuData) {
+// Function to save menu data to Firebase
+async function saveMenuData() {
+    if (!isLoggedIn) return;
+    
+    try {
         const menuWeeks = document.getElementById('menu-weeks');
-        menuWeeks.innerHTML = ''; // Clear existing weeks
+        const weeksData = {};
         
-        // Create a single week with the fetched data
-        const week = createWeekTemplate(1, 'Current Week');
-        
-        // Set menu items from GitHub data
-        Object.keys(menuData).forEach(day => {
-            const dayData = menuData[day];
-            const dayElement = week.querySelector(`[data-day="${day}"]`);
-            if (dayElement) {
-                dayElement.querySelector('[data-meal="morning"]').textContent = dayData.breakfast;
-                dayElement.querySelector('[data-meal="lunch"]').textContent = dayData.lunch;
-                dayElement.querySelector('[data-meal="afternoon"]').textContent = dayData.snack;
-            }
+        menuWeeks.querySelectorAll('.menu-week').forEach((week, index) => {
+            const weekKey = `week${index + 1}`;
+            weeksData[weekKey] = {
+                date: week.querySelector('.week-date').textContent,
+                items: {
+                    monday: {
+                        breakfast: week.querySelector('[data-day="monday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="monday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="monday"][data-meal="afternoon"]').textContent
+                    },
+                    tuesday: {
+                        breakfast: week.querySelector('[data-day="tuesday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="tuesday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="tuesday"][data-meal="afternoon"]').textContent
+                    },
+                    wednesday: {
+                        breakfast: week.querySelector('[data-day="wednesday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="wednesday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="wednesday"][data-meal="afternoon"]').textContent
+                    },
+                    thursday: {
+                        breakfast: week.querySelector('[data-day="thursday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="thursday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="thursday"][data-meal="afternoon"]').textContent
+                    },
+                    friday: {
+                        breakfast: week.querySelector('[data-day="friday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="friday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="friday"][data-meal="afternoon"]').textContent
+                    }
+                }
+            };
         });
         
-        menuWeeks.appendChild(week);
-        updateMenuEditButtons();
+        // Save to Firebase
+        await database.ref('menu').set(weeksData);
+        
+        // Show success message
+        const successMessage = document.getElementById('menu-success');
+        successMessage.textContent = 'Menu saved successfully!';
+        successMessage.style.display = 'block';
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 3000);
+    } catch (error) {
+        console.error('Error saving menu data:', error);
+        showErrorMessage('Error saving menu data. Please try again.');
     }
 }
 
-// Function to save menu data
-async function saveMenuData() {
-    const menuData = {
-        week: {
-            monday: {
-                breakfast: document.querySelector('[data-day="monday"][data-meal="morning"]').textContent,
-                lunch: document.querySelector('[data-day="monday"][data-meal="lunch"]').textContent,
-                snack: document.querySelector('[data-day="monday"][data-meal="afternoon"]').textContent
-            },
-            tuesday: {
-                breakfast: document.querySelector('[data-day="tuesday"][data-meal="morning"]').textContent,
-                lunch: document.querySelector('[data-day="tuesday"][data-meal="lunch"]').textContent,
-                snack: document.querySelector('[data-day="tuesday"][data-meal="afternoon"]').textContent
-            },
-            wednesday: {
-                breakfast: document.querySelector('[data-day="wednesday"][data-meal="morning"]').textContent,
-                lunch: document.querySelector('[data-day="wednesday"][data-meal="lunch"]').textContent,
-                snack: document.querySelector('[data-day="wednesday"][data-meal="afternoon"]').textContent
-            },
-            thursday: {
-                breakfast: document.querySelector('[data-day="thursday"][data-meal="morning"]').textContent,
-                lunch: document.querySelector('[data-day="thursday"][data-meal="lunch"]').textContent,
-                snack: document.querySelector('[data-day="thursday"][data-meal="afternoon"]').textContent
-            },
-            friday: {
-                breakfast: document.querySelector('[data-day="friday"][data-meal="morning"]').textContent,
-                lunch: document.querySelector('[data-day="friday"][data-meal="lunch"]').textContent,
-                snack: document.querySelector('[data-day="friday"][data-meal="afternoon"]').textContent
-            }
-        }
-    };
-
-    // Save to localStorage for admin use
-    localStorage.setItem('menuData', JSON.stringify(menuData));
-    
-    // Show success message
-    const successMessage = document.getElementById('menu-success');
-    successMessage.textContent = 'Menu saved successfully!';
-    successMessage.style.display = 'block';
-    setTimeout(() => {
-        successMessage.style.display = 'none';
-    }, 3000);
-}
+// Listen for real-time updates
+database.ref('menu').on('value', (snapshot) => {
+    const menuData = snapshot.val();
+    if (menuData) {
+        loadMenuData();
+    }
+});
 
 // Handle adding new week
-document.getElementById('add-week').addEventListener('click', function() {
-    const menuWeeks = document.getElementById('menu-weeks');
-    const weekCount = menuWeeks.children.length;
-    const newWeek = createWeekTemplate(weekCount + 1);
+document.getElementById('add-week').addEventListener('click', async () => {
+    if (!isLoggedIn) return;
     
-    // Insert at the beginning
-    menuWeeks.insertBefore(newWeek, menuWeeks.firstChild);
-    
-    // Update edit buttons visibility
-    updateMenuEditButtons();
-    
-    // Add delete functionality
-    const deleteBtn = newWeek.querySelector('.delete-week');
-    deleteBtn.style.display = isLoggedIn ? 'flex' : 'none';
-    deleteBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to delete this week?')) {
-            newWeek.remove();
-            renumberWeeks();
-            saveMenuData(); // Save after deletion
-            showSuccessMessage('Week deleted successfully');
-        }
-    });
-    
-    // Save after adding new week
-    saveMenuData();
-    showSuccessMessage('New week added successfully');
-});
-
-// Renumber weeks after deletion
-function renumberWeeks() {
-    const menuWeeks = document.getElementById('menu-weeks');
-    const weeks = menuWeeks.querySelectorAll('.menu-week');
-    
-    weeks.forEach((week, index) => {
-        const weekNumber = index + 1;
-        week.dataset.weekNumber = weekNumber;
-        week.querySelector('.week-info h3').textContent = `Week ${weekNumber}`;
-    });
-}
-
-// Update menu item form submission
-document.getElementById('edit-menu-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    if (currentEditingItem) {
-        const newText = document.getElementById('edit-menu-text').value;
-        currentEditingItem.textContent = newText;
+    try {
+        const menuWeeks = document.getElementById('menu-weeks');
+        const weekCount = menuWeeks.children.length + 1;
+        const week = createWeekTemplate(weekCount, `Week ${weekCount}`);
         
-        // Save menu data
-        saveMenuData();
+        // Add delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-week';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.onclick = async () => {
+            week.remove();
+            await saveMenuData(); // Save to Firebase after deletion
+        };
+        week.appendChild(deleteBtn);
         
-        closeModal('edit-menu-modal');
-        showSuccessMessage('Menu item updated successfully');
+        menuWeeks.appendChild(week);
+        
+        // Save to Firebase immediately after adding
+        await saveMenuData();
+        
+        // Update edit buttons
+        updateMenuEditButtons();
+    } catch (error) {
+        console.error('Error adding new week:', error);
+        showErrorMessage('Error adding new week. Please try again.');
     }
-});
-
-// Update edit buttons when opening the menu modal
-document.querySelector('.menu-link').addEventListener('click', function() {
-    setTimeout(updateMenuEditButtons, 100);
 });
 
 // Load menu data when page loads
@@ -502,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
         adminBtn.querySelector('span').textContent = 'Admin Logout';
     }
     
-    // Load menu data from GitHub
+    // Load menu data from Firebase
     loadMenuData();
 });
 
