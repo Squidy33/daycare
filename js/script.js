@@ -353,6 +353,9 @@ function createWeekTemplate(weekNumber, date = null) {
 // Import Firebase database
 import { database } from './firebase-config.js';
 
+// Clear any existing localStorage data
+localStorage.removeItem('menuData');
+
 // Function to load menu data from Firebase
 async function loadMenuData() {
     try {
