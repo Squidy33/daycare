@@ -218,14 +218,14 @@ document.getElementById('edit-date').addEventListener('click', function() {
 });
 
 // Handle menu item form submission
-document.getElementById('edit-menu-form').addEventListener('submit', function(e) {
+document.getElementById('edit-menu-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     if (currentEditingItem) {
         const newText = document.getElementById('edit-menu-text').value;
         currentEditingItem.textContent = newText;
         
-        // Save menu data
-        saveMenuData();
+        // Save menu data to Firebase
+        await saveMenuData();
         
         closeModal('edit-menu-modal');
         showSuccessMessage('Menu item updated successfully');
