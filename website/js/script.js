@@ -93,7 +93,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Admin login functionality
-let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+let isLoggedIn = false;
 
 // Update button state on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -108,7 +108,6 @@ function handleAdminAction() {
     if (isLoggedIn) {
         // Logout
         isLoggedIn = false;
-        localStorage.removeItem('isLoggedIn');
         const adminBtn = document.getElementById('admin-btn');
         adminBtn.classList.remove('logged-in');
         adminBtn.querySelector('span').textContent = 'Admin Login';
@@ -147,7 +146,6 @@ document.querySelector('.admin-form').addEventListener('submit', function(e) {
     if (username.value === 'Admin_X7gPzQ9w' && password.value === '!V4m#zQ8pK@1dT9bX$') {
         // Success
         isLoggedIn = true;
-        localStorage.setItem('isLoggedIn', 'true');
         showSuccessMessage('Login successful');
         
         // Update button state and edit buttons visibility without reloading
@@ -218,14 +216,14 @@ document.getElementById('edit-date').addEventListener('click', function() {
 });
 
 // Handle menu item form submission
-document.getElementById('edit-menu-form').addEventListener('submit', function(e) {
+document.getElementById('edit-menu-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     if (currentEditingItem) {
         const newText = document.getElementById('edit-menu-text').value;
         currentEditingItem.textContent = newText;
         
-        // Save all weeks to localStorage
-        saveMenuToStorage();
+        // Save menu data to Firebase
+        await saveMenuData();
         
         closeModal('edit-menu-modal');
         showSuccessMessage('Menu item updated successfully');
@@ -233,14 +231,14 @@ document.getElementById('edit-menu-form').addEventListener('submit', function(e)
 });
 
 // Handle date form submission
-document.getElementById('edit-date-form').addEventListener('submit', function(e) {
+document.getElementById('edit-date-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     if (currentEditingDate) {
         const newDate = document.getElementById('edit-date-text').value;
         currentEditingDate.textContent = newDate;
         
-        // Save all weeks to localStorage
-        saveMenuToStorage();
+        // Save menu data to Firebase
+        await saveMenuData();
         
         closeModal('edit-date-modal');
         showSuccessMessage('Week date updated successfully');
@@ -350,126 +348,106 @@ function createWeekTemplate(weekNumber, date = null) {
     return week;
 }
 
-// Load menu data from localStorage
-function loadMenuData() {
-    const weeksData = JSON.parse(localStorage.getItem('menuWeeks') || '[]');
-    const menuWeeks = document.getElementById('menu-weeks');
-    menuWeeks.innerHTML = ''; // Clear existing weeks
-    
-    if (weeksData.length === 0) {
-        // If no data, create default week with original menu
-        const defaultWeek = createWeekTemplate(1, 'Week of January 1, 2024');
+// Load menu data from Firebase
+async function loadMenuData() {
+    try {
+        const snapshot = await database.ref('menu').once('value');
+        const menuData = snapshot.val();
+        const menuWeeks = document.getElementById('menu-weeks');
+        menuWeeks.innerHTML = ''; // Clear existing weeks
         
-        // Set default menu items
-        const defaultMenu = {
-            monday: {
-                morning: 'Oatmeal with fresh fruits',
-                lunch: 'Chicken soup with vegetables',
-                afternoon: 'Yogurt with granola'
-            },
-            tuesday: {
-                morning: 'Whole grain toast with peanut butter',
-                lunch: 'Pasta with tomato sauce',
-                afternoon: 'Fresh fruit salad'
-            },
-            wednesday: {
-                morning: 'Scrambled eggs with toast',
-                lunch: 'Fish with rice and vegetables',
-                afternoon: 'Cheese and crackers'
-            },
-            thursday: {
-                morning: 'Pancakes with maple syrup',
-                lunch: 'Beef stew with bread',
-                afternoon: 'Mixed nuts and dried fruits'
-            },
-            friday: {
-                morning: 'Cereal with milk',
-                lunch: 'Pizza with salad',
-                afternoon: 'Ice cream with toppings'
-            }
-        };
-        
-        // Apply default menu items
-        Object.keys(defaultMenu).forEach(day => {
-            Object.keys(defaultMenu[day]).forEach(meal => {
-                const element = defaultWeek.querySelector(`[data-day="${day}"][data-meal="${meal}"]`);
-                if (element) {
-                    element.textContent = defaultMenu[day][meal];
-                }
-            });
-        });
-        
-        menuWeeks.appendChild(defaultWeek);
-        
-        // Save default menu to localStorage
-        const defaultWeekData = {
-            weekNumber: 1,
-            date: 'Week of January 1, 2024',
-            menuItems: defaultMenu
-        };
-        localStorage.setItem('menuWeeks', JSON.stringify([defaultWeekData]));
-    } else {
-        // Load saved weeks
-        weeksData.forEach(weekData => {
-            const week = createWeekTemplate(weekData.weekNumber, weekData.date);
-            
-            // Set menu items
-            Object.keys(weekData.menuItems).forEach(day => {
-                Object.keys(weekData.menuItems[day]).forEach(meal => {
-                    const element = week.querySelector(`[data-day="${day}"][data-meal="${meal}"]`);
-                    if (element) {
-                        element.textContent = weekData.menuItems[day][meal];
+        if (menuData) {
+            Object.keys(menuData).forEach((weekKey, index) => {
+                const weekData = menuData[weekKey];
+                const week = createWeekTemplate(index + 1, weekData.date);
+                
+                // Add delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-week';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.onclick = async () => {
+                    if (confirm('Are you sure you want to delete this week?')) {
+                        week.remove();
+                        await saveMenuData(); // Save to Firebase after deletion
+                        showSuccessMessage('Week deleted successfully');
+                    }
+                };
+                week.appendChild(deleteBtn);
+                
+                // Set menu items from Firebase data
+                Object.keys(weekData.items).forEach(day => {
+                    const dayData = weekData.items[day];
+                    const dayElement = week.querySelector(`[data-day="${day}"]`);
+                    if (dayElement) {
+                        dayElement.querySelector('[data-meal="morning"]').textContent = dayData.breakfast;
+                        dayElement.querySelector('[data-meal="lunch"]').textContent = dayData.lunch;
+                        dayElement.querySelector('[data-meal="afternoon"]').textContent = dayData.snack;
                     }
                 });
+                
+                menuWeeks.appendChild(week);
             });
             
-            menuWeeks.appendChild(week);
-            
-            // Add delete functionality
-            const deleteBtn = week.querySelector('.delete-week');
-            deleteBtn.style.display = isLoggedIn ? 'flex' : 'none';
-            deleteBtn.addEventListener('click', function() {
-                if (confirm('Are you sure you want to delete this week?')) {
-                    week.remove();
-                    renumberWeeks();
-                    saveMenuToStorage(); // Save after deletion
-                    showSuccessMessage('Week deleted successfully');
-                }
-            });
-        });
+            updateMenuEditButtons();
+        }
+    } catch (error) {
+        console.error('Error loading menu data:', error);
+        showErrorMessage('Error loading menu data. Please try again.');
     }
-    
-    updateMenuEditButtons();
 }
 
-// Handle adding new week
-document.getElementById('add-week').addEventListener('click', function() {
-    const menuWeeks = document.getElementById('menu-weeks');
-    const weekCount = menuWeeks.children.length;
-    const newWeek = createWeekTemplate(weekCount + 1);
+// Function to save menu data to Firebase
+async function saveMenuData() {
+    if (!isLoggedIn) return;
     
-    // Insert at the beginning
-    menuWeeks.insertBefore(newWeek, menuWeeks.firstChild);
-    
-    // Update edit buttons visibility
-    updateMenuEditButtons();
-    
-    // Add delete functionality
-    const deleteBtn = newWeek.querySelector('.delete-week');
-    deleteBtn.style.display = isLoggedIn ? 'flex' : 'none';
-    deleteBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to delete this week?')) {
-            newWeek.remove();
-            renumberWeeks();
-            saveMenuToStorage(); // Save after deletion
-            showSuccessMessage('Week deleted successfully');
-        }
-    });
-    
-    // Save after adding new week
-    saveMenuToStorage();
-    showSuccessMessage('New week added successfully');
-});
+    try {
+        const menuWeeks = document.getElementById('menu-weeks');
+        const weeksData = {};
+        
+        menuWeeks.querySelectorAll('.menu-week').forEach((week, index) => {
+            const weekKey = `week${index + 1}`;
+            weeksData[weekKey] = {
+                date: week.querySelector('.week-date').textContent,
+                items: {
+                    monday: {
+                        breakfast: week.querySelector('[data-day="monday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="monday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="monday"][data-meal="afternoon"]').textContent
+                    },
+                    tuesday: {
+                        breakfast: week.querySelector('[data-day="tuesday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="tuesday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="tuesday"][data-meal="afternoon"]').textContent
+                    },
+                    wednesday: {
+                        breakfast: week.querySelector('[data-day="wednesday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="wednesday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="wednesday"][data-meal="afternoon"]').textContent
+                    },
+                    thursday: {
+                        breakfast: week.querySelector('[data-day="thursday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="thursday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="thursday"][data-meal="afternoon"]').textContent
+                    },
+                    friday: {
+                        breakfast: week.querySelector('[data-day="friday"][data-meal="morning"]').textContent,
+                        lunch: week.querySelector('[data-day="friday"][data-meal="lunch"]').textContent,
+                        snack: week.querySelector('[data-day="friday"][data-meal="afternoon"]').textContent
+                    }
+                }
+            };
+        });
+        
+        // Save to Firebase
+        await database.ref('menu').set(weeksData);
+        
+        // Show success message
+        showSuccessMessage('Menu saved successfully!');
+    } catch (error) {
+        console.error('Error saving menu data:', error);
+        showErrorMessage('Error saving menu data. Please try again.');
+    }
+}
 
 // Renumber weeks after deletion
 function renumberWeeks() {
@@ -483,55 +461,37 @@ function renumberWeeks() {
     });
 }
 
-// Save menu data to localStorage
-function saveMenuToStorage() {
+// Handle adding new week
+document.getElementById('add-week').addEventListener('click', async function() {
     const menuWeeks = document.getElementById('menu-weeks');
-    const weeksData = [];
+    const weekCount = menuWeeks.children.length;
+    const newWeek = createWeekTemplate(weekCount + 1);
     
-    menuWeeks.querySelectorAll('.menu-week').forEach(week => {
-        const weekData = {
-            weekNumber: week.dataset.weekNumber,
-            date: week.querySelector('.week-date').textContent,
-            menuItems: {}
-        };
-        
-        week.querySelectorAll('.editable').forEach(item => {
-            const day = item.dataset.day;
-            const meal = item.dataset.meal;
-            if (!weekData.menuItems[day]) {
-                weekData.menuItems[day] = {};
-            }
-            weekData.menuItems[day][meal] = item.textContent;
-        });
-        
-        weeksData.push(weekData);
+    // Insert at the beginning
+    menuWeeks.insertBefore(newWeek, menuWeeks.firstChild);
+    
+    // Update edit buttons visibility
+    updateMenuEditButtons();
+    
+    // Add delete functionality
+    const deleteBtn = newWeek.querySelector('.delete-week');
+    deleteBtn.style.display = isLoggedIn ? 'flex' : 'none';
+    deleteBtn.addEventListener('click', async function() {
+        if (confirm('Are you sure you want to delete this week?')) {
+            newWeek.remove();
+            renumberWeeks();
+            await saveMenuData(); // Save to Firebase after deletion
+            showSuccessMessage('Week deleted successfully');
+        }
     });
     
-    localStorage.setItem('menuWeeks', JSON.stringify(weeksData));
-}
-
-// Update menu item form submission to save all weeks
-document.getElementById('edit-menu-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    if (currentEditingItem) {
-        const newText = document.getElementById('edit-menu-text').value;
-        currentEditingItem.textContent = newText;
-        
-        // Save all weeks to localStorage
-        saveMenuToStorage();
-        
-        closeModal('edit-menu-modal');
-        showSuccessMessage('Menu item updated successfully');
-    }
-});
-
-// Update edit buttons when opening the menu modal
-document.querySelector('.menu-link').addEventListener('click', function() {
-    setTimeout(updateMenuEditButtons, 100);
+    // Save after adding new week
+    await saveMenuData();
+    showSuccessMessage('New week added successfully');
 });
 
 // Load menu data when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Update admin button state
     if (isLoggedIn) {
         const adminBtn = document.getElementById('admin-btn');
@@ -539,8 +499,8 @@ document.addEventListener('DOMContentLoaded', function() {
         adminBtn.querySelector('span').textContent = 'Admin Logout';
     }
     
-    // Load menu data
-    loadMenuData();
+    // Load menu data from Firebase
+    await loadMenuData();
 });
 
 // Gallery password protection
@@ -577,65 +537,117 @@ function updateGalleryAdminControls() {
     adminControls.style.display = isLoggedIn ? 'block' : 'none';
 }
 
-// Load gallery images from localStorage
-function loadGalleryImages() {
-    const galleryGrid = document.querySelector('.gallery-grid');
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-    
-    galleryGrid.innerHTML = ''; // Clear existing images
-    
-    savedImages.forEach(image => {
-        const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item';
+// Load gallery images from Firebase
+async function loadGalleryImages() {
+    try {
+        const snapshot = await database.ref('gallery').once('value');
+        const galleryData = snapshot.val();
+        const galleryGrid = document.querySelector('.gallery-grid');
+        galleryGrid.innerHTML = ''; // Clear existing images
         
-        galleryItem.innerHTML = `
-            <div class="gallery-date-container">
-                <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
-                ${isLoggedIn ? `
-                    <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
-                        <i class="fas fa-calendar-edit"></i>
-                    </button>
-                ` : ''}
-            </div>
-            <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
-            ${isLoggedIn ? `
-                <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
-        `;
-        
-        galleryGrid.appendChild(galleryItem);
-    });
+        if (galleryData) {
+            Object.keys(galleryData).forEach(imageId => {
+                const image = galleryData[imageId];
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                
+                galleryItem.innerHTML = `
+                    <div class="gallery-date-container">
+                        <span class="gallery-date" data-image-id="${imageId}">${image.date}</span>
+                        ${isLoggedIn ? `
+                            <button class="edit-date-btn" onclick="editImageDate('${imageId}')">
+                                <i class="fas fa-calendar-edit"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
+                    ${isLoggedIn ? `
+                        <button class="delete-image" onclick="deleteGalleryImage('${imageId}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                `;
+                
+                galleryGrid.appendChild(galleryItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading gallery images:', error);
+        showErrorMessage('Error loading gallery images. Please try again.');
+    }
 }
 
 // Sort gallery images
-function sortGalleryImages() {
-    const sortBy = document.getElementById('gallery-sort').value;
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-    
-    savedImages.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
-    });
-    
-    localStorage.setItem('galleryImages', JSON.stringify(savedImages));
-    loadGalleryImages();
+async function sortGalleryImages() {
+    try {
+        const sortBy = document.getElementById('gallery-sort').value;
+        const snapshot = await database.ref('gallery').once('value');
+        const galleryData = snapshot.val();
+        
+        if (galleryData) {
+            const images = Object.entries(galleryData).map(([id, image]) => ({
+                id,
+                ...image
+            }));
+            
+            images.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+            
+            // Update the display order
+            const galleryGrid = document.querySelector('.gallery-grid');
+            galleryGrid.innerHTML = '';
+            
+            images.forEach(image => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                
+                galleryItem.innerHTML = `
+                    <div class="gallery-date-container">
+                        <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
+                        ${isLoggedIn ? `
+                            <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
+                                <i class="fas fa-calendar-edit"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
+                    ${isLoggedIn ? `
+                        <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                `;
+                
+                galleryGrid.appendChild(galleryItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error sorting gallery images:', error);
+        showErrorMessage('Error sorting gallery images. Please try again.');
+    }
 }
 
 // Edit image date
-function editImageDate(imageId) {
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-    const image = savedImages.find(img => img.id === imageId);
+async function editImageDate(imageId) {
+    if (!isLoggedIn) return;
     
-    if (image) {
-        const newDate = prompt('Enter new date (YYYY-MM-DD):', image.date);
-        if (newDate) {
-            image.date = newDate;
-            localStorage.setItem('galleryImages', JSON.stringify(savedImages));
-            loadGalleryImages();
+    try {
+        const snapshot = await database.ref(`gallery/${imageId}`).once('value');
+        const image = snapshot.val();
+        
+        if (image) {
+            const newDate = prompt('Enter new date (YYYY-MM-DD):', image.date);
+            if (newDate) {
+                await database.ref(`gallery/${imageId}`).update({ date: newDate });
+                loadGalleryImages();
+            }
         }
+    } catch (error) {
+        console.error('Error updating image date:', error);
+        showErrorMessage('Error updating image date. Please try again.');
     }
 }
 
@@ -675,7 +687,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Handle image upload with improved error handling
-function handleImageUpload() {
+async function handleImageUpload() {
     if (!isLoggedIn) return;
     
     const imageFile = document.getElementById('gallery-image-upload').files[0];
@@ -703,7 +715,7 @@ function handleImageUpload() {
         return;
     }
     
-    addGalleryImage(imageFile, date);
+    await addGalleryImage(imageFile, date);
     document.getElementById('gallery-image-upload').value = '';
     document.getElementById('gallery-image-date').value = '';
 }
@@ -723,23 +735,23 @@ function showErrorMessage(message) {
 }
 
 // Add new image to gallery with improved error handling
-function addGalleryImage(imageFile, date) {
+async function addGalleryImage(imageFile, date) {
     if (!isLoggedIn) return;
     
     const reader = new FileReader();
     
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
-            const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
             const newImage = {
-                id: Date.now().toString(),
                 src: e.target.result,
                 alt: 'Daycare Activity',
                 date: date
             };
             
-            savedImages.push(newImage);
-            localStorage.setItem('galleryImages', JSON.stringify(savedImages));
+            // Save to Firebase
+            const newImageRef = await database.ref('gallery').push(newImage);
+            
+            // Reload gallery
             loadGalleryImages();
             showSuccessMessage('Image added successfully');
         } catch (error) {
@@ -756,15 +768,18 @@ function addGalleryImage(imageFile, date) {
 }
 
 // Delete image from gallery (admin only)
-function deleteGalleryImage(imageId) {
+async function deleteGalleryImage(imageId) {
     if (!isLoggedIn) return;
     
     if (confirm('Are you sure you want to delete this image?')) {
-        const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-        const updatedImages = savedImages.filter(img => img.id !== imageId);
-        localStorage.setItem('galleryImages', JSON.stringify(updatedImages));
-        loadGalleryImages();
-        showSuccessMessage('Image deleted successfully');
+        try {
+            await database.ref(`gallery/${imageId}`).remove();
+            loadGalleryImages();
+            showSuccessMessage('Image deleted successfully');
+        } catch (error) {
+            console.error('Error deleting image:', error);
+            showErrorMessage('Error deleting image. Please try again.');
+        }
     }
 }
 
@@ -791,3 +806,6 @@ function scrollToTop() {
         behavior: 'smooth'
     });
 }
+
+// Import Firebase database
+import { database } from './firebase-config.js';

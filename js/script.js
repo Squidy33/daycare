@@ -93,7 +93,7 @@ document.addEventListener('keydown', function(event) {
 });
 
 // Admin login functionality
-let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+let isLoggedIn = false;
 
 // Update button state on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -108,7 +108,6 @@ function handleAdminAction() {
     if (isLoggedIn) {
         // Logout
         isLoggedIn = false;
-        localStorage.removeItem('isLoggedIn');
         const adminBtn = document.getElementById('admin-btn');
         adminBtn.classList.remove('logged-in');
         adminBtn.querySelector('span').textContent = 'Admin Login';
@@ -147,7 +146,6 @@ document.querySelector('.admin-form').addEventListener('submit', function(e) {
     if (username.value === 'Admin_X7gPzQ9w' && password.value === '!V4m#zQ8pK@1dT9bX$') {
         // Success
         isLoggedIn = true;
-        localStorage.setItem('isLoggedIn', 'true');
         showSuccessMessage('Login successful');
         
         // Update button state and edit buttons visibility without reloading
@@ -376,8 +374,11 @@ async function loadMenuData() {
                 deleteBtn.className = 'delete-week';
                 deleteBtn.innerHTML = '&times;';
                 deleteBtn.onclick = async () => {
-                    week.remove();
-                    await saveMenuData(); // Save to Firebase after deletion
+                    if (confirm('Are you sure you want to delete this week?')) {
+                        week.remove();
+                        await saveMenuData(); // Save to Firebase after deletion
+                        showSuccessMessage('Week deleted successfully');
+                    }
                 };
                 week.appendChild(deleteBtn);
                 
@@ -449,24 +450,27 @@ async function saveMenuData() {
         await database.ref('menu').set(weeksData);
         
         // Show success message
-        const successMessage = document.getElementById('menu-success');
-        successMessage.textContent = 'Menu saved successfully!';
-        successMessage.style.display = 'block';
-        setTimeout(() => {
-            successMessage.style.display = 'none';
-        }, 3000);
+        showSuccessMessage('Menu saved successfully!');
     } catch (error) {
         console.error('Error saving menu data:', error);
         showErrorMessage('Error saving menu data. Please try again.');
     }
 }
 
-// Listen for real-time updates
+// Listen for real-time updates with error handling
 database.ref('menu').on('value', (snapshot) => {
-    const menuData = snapshot.val();
-    if (menuData) {
-        loadMenuData();
+    try {
+        const menuData = snapshot.val();
+        if (menuData) {
+            loadMenuData();
+        }
+    } catch (error) {
+        console.error('Error handling real-time update:', error);
+        showErrorMessage('Error updating menu data. Please refresh the page.');
     }
+}, (error) => {
+    console.error('Error setting up real-time listener:', error);
+    showErrorMessage('Error connecting to menu data. Please refresh the page.');
 });
 
 // Handle adding new week
@@ -548,65 +552,166 @@ function updateGalleryAdminControls() {
     adminControls.style.display = isLoggedIn ? 'block' : 'none';
 }
 
-// Load gallery images from localStorage
-function loadGalleryImages() {
-    const galleryGrid = document.querySelector('.gallery-grid');
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-    
-    galleryGrid.innerHTML = ''; // Clear existing images
-    
-    savedImages.forEach(image => {
-        const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item';
+// Load gallery images from Firebase
+async function loadGalleryImages() {
+    try {
+        const snapshot = await database.ref('gallery').once('value');
+        const galleryData = snapshot.val();
+        const galleryGrid = document.querySelector('.gallery-grid');
+        galleryGrid.innerHTML = ''; // Clear existing images
         
-        galleryItem.innerHTML = `
-            <div class="gallery-date-container">
-                <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
-                ${isLoggedIn ? `
-                    <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
-                        <i class="fas fa-calendar-edit"></i>
-                    </button>
-                ` : ''}
-            </div>
-            <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
-            ${isLoggedIn ? `
-                <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
-        `;
-        
-        galleryGrid.appendChild(galleryItem);
-    });
+        if (galleryData) {
+            Object.keys(galleryData).forEach(imageId => {
+                const image = galleryData[imageId];
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                
+                galleryItem.innerHTML = `
+                    <div class="gallery-date-container">
+                        <span class="gallery-date" data-image-id="${imageId}">${image.date}</span>
+                        ${isLoggedIn ? `
+                            <button class="edit-date-btn" onclick="editImageDate('${imageId}')">
+                                <i class="fas fa-calendar-edit"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
+                    ${isLoggedIn ? `
+                        <button class="delete-image" onclick="deleteGalleryImage('${imageId}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                `;
+                
+                galleryGrid.appendChild(galleryItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading gallery images:', error);
+        showErrorMessage('Error loading gallery images. Please try again.');
+    }
 }
 
-// Sort gallery images
-function sortGalleryImages() {
-    const sortBy = document.getElementById('gallery-sort').value;
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
+// Add new image to gallery with Firebase
+async function addGalleryImage(imageFile, date) {
+    if (!isLoggedIn) return;
     
-    savedImages.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
-    });
+    const reader = new FileReader();
     
-    localStorage.setItem('galleryImages', JSON.stringify(savedImages));
-    loadGalleryImages();
+    reader.onload = async function(e) {
+        try {
+            const newImage = {
+                src: e.target.result,
+                alt: 'Daycare Activity',
+                date: date
+            };
+            
+            // Save to Firebase
+            const newImageRef = await database.ref('gallery').push(newImage);
+            
+            // Reload gallery
+            loadGalleryImages();
+            showSuccessMessage('Image added successfully');
+        } catch (error) {
+            showErrorMessage('Error saving image. Please try again.');
+            console.error('Error saving image:', error);
+        }
+    };
+    
+    reader.onerror = function() {
+        showErrorMessage('Error reading image file. Please try again.');
+    };
+    
+    reader.readAsDataURL(imageFile);
+}
+
+// Delete image from gallery (admin only)
+async function deleteGalleryImage(imageId) {
+    if (!isLoggedIn) return;
+    
+    if (confirm('Are you sure you want to delete this image?')) {
+        try {
+            await database.ref(`gallery/${imageId}`).remove();
+            loadGalleryImages();
+            showSuccessMessage('Image deleted successfully');
+        } catch (error) {
+            console.error('Error deleting image:', error);
+            showErrorMessage('Error deleting image. Please try again.');
+        }
+    }
 }
 
 // Edit image date
-function editImageDate(imageId) {
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-    const image = savedImages.find(img => img.id === imageId);
+async function editImageDate(imageId) {
+    if (!isLoggedIn) return;
     
-    if (image) {
-        const newDate = prompt('Enter new date (YYYY-MM-DD):', image.date);
-        if (newDate) {
-            image.date = newDate;
-            localStorage.setItem('galleryImages', JSON.stringify(savedImages));
-            loadGalleryImages();
+    try {
+        const snapshot = await database.ref(`gallery/${imageId}`).once('value');
+        const image = snapshot.val();
+        
+        if (image) {
+            const newDate = prompt('Enter new date (YYYY-MM-DD):', image.date);
+            if (newDate) {
+                await database.ref(`gallery/${imageId}`).update({ date: newDate });
+                loadGalleryImages();
+            }
         }
+    } catch (error) {
+        console.error('Error updating image date:', error);
+        showErrorMessage('Error updating image date. Please try again.');
+    }
+}
+
+// Sort gallery images
+async function sortGalleryImages() {
+    try {
+        const sortBy = document.getElementById('gallery-sort').value;
+        const snapshot = await database.ref('gallery').once('value');
+        const galleryData = snapshot.val();
+        
+        if (galleryData) {
+            const images = Object.entries(galleryData).map(([id, image]) => ({
+                id,
+                ...image
+            }));
+            
+            images.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+            
+            // Update the display order
+            const galleryGrid = document.querySelector('.gallery-grid');
+            galleryGrid.innerHTML = '';
+            
+            images.forEach(image => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                
+                galleryItem.innerHTML = `
+                    <div class="gallery-date-container">
+                        <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
+                        ${isLoggedIn ? `
+                            <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
+                                <i class="fas fa-calendar-edit"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
+                    ${isLoggedIn ? `
+                        <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                `;
+                
+                galleryGrid.appendChild(galleryItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error sorting gallery images:', error);
+        showErrorMessage('Error sorting gallery images. Please try again.');
     }
 }
 
@@ -644,100 +749,6 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
-
-// Handle image upload with improved error handling
-function handleImageUpload() {
-    if (!isLoggedIn) return;
-    
-    const imageFile = document.getElementById('gallery-image-upload').files[0];
-    const date = document.getElementById('gallery-image-date').value;
-    
-    if (!imageFile) {
-        showErrorMessage('Please select an image file');
-        return;
-    }
-    
-    if (!date) {
-        showErrorMessage('Please select a date');
-        return;
-    }
-    
-    // Check file size (max 5MB)
-    if (imageFile.size > 5 * 1024 * 1024) {
-        showErrorMessage('Image size should be less than 5MB');
-        return;
-    }
-    
-    // Check file type
-    if (!imageFile.type.startsWith('image/')) {
-        showErrorMessage('Please select a valid image file');
-        return;
-    }
-    
-    addGalleryImage(imageFile, date);
-    document.getElementById('gallery-image-upload').value = '';
-    document.getElementById('gallery-image-date').value = '';
-}
-
-// Show error message
-function showErrorMessage(message) {
-    const errorMessage = document.createElement('div');
-    errorMessage.className = 'error-message show';
-    errorMessage.textContent = message;
-    
-    const form = document.querySelector('.gallery-upload-form');
-    form.insertBefore(errorMessage, form.firstChild);
-    
-    setTimeout(() => {
-        errorMessage.remove();
-    }, 3000);
-}
-
-// Add new image to gallery with improved error handling
-function addGalleryImage(imageFile, date) {
-    if (!isLoggedIn) return;
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-            const newImage = {
-                id: Date.now().toString(),
-                src: e.target.result,
-                alt: 'Daycare Activity',
-                date: date
-            };
-            
-            savedImages.push(newImage);
-            localStorage.setItem('galleryImages', JSON.stringify(savedImages));
-            loadGalleryImages();
-            showSuccessMessage('Image added successfully');
-        } catch (error) {
-            showErrorMessage('Error saving image. Please try again.');
-            console.error('Error saving image:', error);
-        }
-    };
-    
-    reader.onerror = function() {
-        showErrorMessage('Error reading image file. Please try again.');
-    };
-    
-    reader.readAsDataURL(imageFile);
-}
-
-// Delete image from gallery (admin only)
-function deleteGalleryImage(imageId) {
-    if (!isLoggedIn) return;
-    
-    if (confirm('Are you sure you want to delete this image?')) {
-        const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-        const updatedImages = savedImages.filter(img => img.id !== imageId);
-        localStorage.setItem('galleryImages', JSON.stringify(updatedImages));
-        loadGalleryImages();
-        showSuccessMessage('Image deleted successfully');
-    }
-}
 
 // Reset gallery view when modal is closed
 document.getElementById('gallery-modal').addEventListener('click', function(e) {
