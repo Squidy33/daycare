@@ -1,0 +1,29 @@
+{
+    "week": {
+        "monday": {
+            "breakfast": "Oatmeal with fruits",
+            "lunch": "Chicken and rice with vegetables",
+            "snack": "Apple slices and yogurt"
+        },
+        "tuesday": {
+            "breakfast": "Pancakes with maple syrup",
+            "lunch": "Pasta with tomato sauce",
+            "snack": "Banana and crackers"
+        },
+        "wednesday": {
+            "breakfast": "Scrambled eggs and toast",
+            "lunch": "Fish and mashed potatoes",
+            "snack": "Orange segments and cheese"
+        },
+        "thursday": {
+            "breakfast": "Cereal with milk",
+            "lunch": "Vegetable soup with bread",
+            "snack": "Grapes and nuts"
+        },
+        "friday": {
+            "breakfast": "French toast with fruits",
+            "lunch": "Pizza with salad",
+            "snack": "Mixed fruits"
+        }
+    }
+} 

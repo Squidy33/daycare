@@ -791,3 +791,72 @@ function scrollToTop() {
         behavior: 'smooth'
     });
 }
+
+// Function to fetch menu data from GitHub
+async function fetchMenuData() {
+    try {
+        const response = await fetch('https://raw.githubusercontent.com/Squidy33/daycare/main/data/menu.json');
+        const data = await response.json();
+        return data.week;
+    } catch (error) {
+        console.error('Error fetching menu data:', error);
+        return null;
+    }
+}
+
+// Function to load menu data
+async function loadMenuData() {
+    const menuData = await fetchMenuData();
+    if (menuData) {
+        Object.keys(menuData).forEach(day => {
+            const dayData = menuData[day];
+            document.getElementById(`${day}-breakfast`).value = dayData.breakfast;
+            document.getElementById(`${day}-lunch`).value = dayData.lunch;
+            document.getElementById(`${day}-snack`).value = dayData.snack;
+        });
+    }
+}
+
+// Function to save menu data
+async function saveMenuData() {
+    const menuData = {
+        week: {
+            monday: {
+                breakfast: document.getElementById('monday-breakfast').value,
+                lunch: document.getElementById('monday-lunch').value,
+                snack: document.getElementById('monday-snack').value
+            },
+            tuesday: {
+                breakfast: document.getElementById('tuesday-breakfast').value,
+                lunch: document.getElementById('tuesday-lunch').value,
+                snack: document.getElementById('tuesday-snack').value
+            },
+            wednesday: {
+                breakfast: document.getElementById('wednesday-breakfast').value,
+                lunch: document.getElementById('wednesday-lunch').value,
+                snack: document.getElementById('wednesday-snack').value
+            },
+            thursday: {
+                breakfast: document.getElementById('thursday-breakfast').value,
+                lunch: document.getElementById('thursday-lunch').value,
+                snack: document.getElementById('thursday-snack').value
+            },
+            friday: {
+                breakfast: document.getElementById('friday-breakfast').value,
+                lunch: document.getElementById('friday-lunch').value,
+                snack: document.getElementById('friday-snack').value
+            }
+        }
+    };
+
+    // Save to localStorage for admin use
+    localStorage.setItem('menuData', JSON.stringify(menuData));
+    
+    // Show success message
+    const successMessage = document.getElementById('menu-success');
+    successMessage.textContent = 'Menu saved successfully!';
+    successMessage.style.display = 'block';
+    setTimeout(() => {
+        successMessage.style.display = 'none';
+    }, 3000);
+}
