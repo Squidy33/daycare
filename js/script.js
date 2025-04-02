@@ -224,8 +224,8 @@ document.getElementById('edit-menu-form').addEventListener('submit', function(e)
         const newText = document.getElementById('edit-menu-text').value;
         currentEditingItem.textContent = newText;
         
-        // Save all weeks to localStorage
-        saveMenuToStorage();
+        // Save menu data
+        saveMenuData();
         
         closeModal('edit-menu-modal');
         showSuccessMessage('Menu item updated successfully');
@@ -239,8 +239,8 @@ document.getElementById('edit-date-form').addEventListener('submit', function(e)
         const newDate = document.getElementById('edit-date-text').value;
         currentEditingDate.textContent = newDate;
         
-        // Save all weeks to localStorage
-        saveMenuToStorage();
+        // Save menu data
+        saveMenuData();
         
         closeModal('edit-date-modal');
         showSuccessMessage('Week date updated successfully');
@@ -350,96 +350,86 @@ function createWeekTemplate(weekNumber, date = null) {
     return week;
 }
 
-// Load menu data from localStorage
-function loadMenuData() {
-    const weeksData = JSON.parse(localStorage.getItem('menuWeeks') || '[]');
-    const menuWeeks = document.getElementById('menu-weeks');
-    menuWeeks.innerHTML = ''; // Clear existing weeks
-    
-    if (weeksData.length === 0) {
-        // If no data, create default week with original menu
-        const defaultWeek = createWeekTemplate(1, 'Week of January 1, 2024');
+// Function to fetch menu data from GitHub
+async function fetchMenuData() {
+    try {
+        const response = await fetch('https://raw.githubusercontent.com/Squidy33/daycare/main/data/menu.json');
+        const data = await response.json();
+        return data.week;
+    } catch (error) {
+        console.error('Error fetching menu data:', error);
+        return null;
+    }
+}
+
+// Function to load menu data
+async function loadMenuData() {
+    const menuData = await fetchMenuData();
+    if (menuData) {
+        const menuWeeks = document.getElementById('menu-weeks');
+        menuWeeks.innerHTML = ''; // Clear existing weeks
         
-        // Set default menu items
-        const defaultMenu = {
+        // Create a single week with the fetched data
+        const week = createWeekTemplate(1, 'Current Week');
+        
+        // Set menu items from GitHub data
+        Object.keys(menuData).forEach(day => {
+            const dayData = menuData[day];
+            const dayElement = week.querySelector(`[data-day="${day}"]`);
+            if (dayElement) {
+                dayElement.querySelector('[data-meal="morning"]').textContent = dayData.breakfast;
+                dayElement.querySelector('[data-meal="lunch"]').textContent = dayData.lunch;
+                dayElement.querySelector('[data-meal="afternoon"]').textContent = dayData.snack;
+            }
+        });
+        
+        menuWeeks.appendChild(week);
+        updateMenuEditButtons();
+    }
+}
+
+// Function to save menu data
+async function saveMenuData() {
+    const menuData = {
+        week: {
             monday: {
-                morning: 'Oatmeal with fresh fruits',
-                lunch: 'Chicken soup with vegetables',
-                afternoon: 'Yogurt with granola'
+                breakfast: document.querySelector('[data-day="monday"][data-meal="morning"]').textContent,
+                lunch: document.querySelector('[data-day="monday"][data-meal="lunch"]').textContent,
+                snack: document.querySelector('[data-day="monday"][data-meal="afternoon"]').textContent
             },
             tuesday: {
-                morning: 'Whole grain toast with peanut butter',
-                lunch: 'Pasta with tomato sauce',
-                afternoon: 'Fresh fruit salad'
+                breakfast: document.querySelector('[data-day="tuesday"][data-meal="morning"]').textContent,
+                lunch: document.querySelector('[data-day="tuesday"][data-meal="lunch"]').textContent,
+                snack: document.querySelector('[data-day="tuesday"][data-meal="afternoon"]').textContent
             },
             wednesday: {
-                morning: 'Scrambled eggs with toast',
-                lunch: 'Fish with rice and vegetables',
-                afternoon: 'Cheese and crackers'
+                breakfast: document.querySelector('[data-day="wednesday"][data-meal="morning"]').textContent,
+                lunch: document.querySelector('[data-day="wednesday"][data-meal="lunch"]').textContent,
+                snack: document.querySelector('[data-day="wednesday"][data-meal="afternoon"]').textContent
             },
             thursday: {
-                morning: 'Pancakes with maple syrup',
-                lunch: 'Beef stew with bread',
-                afternoon: 'Mixed nuts and dried fruits'
+                breakfast: document.querySelector('[data-day="thursday"][data-meal="morning"]').textContent,
+                lunch: document.querySelector('[data-day="thursday"][data-meal="lunch"]').textContent,
+                snack: document.querySelector('[data-day="thursday"][data-meal="afternoon"]').textContent
             },
             friday: {
-                morning: 'Cereal with milk',
-                lunch: 'Pizza with salad',
-                afternoon: 'Ice cream with toppings'
+                breakfast: document.querySelector('[data-day="friday"][data-meal="morning"]').textContent,
+                lunch: document.querySelector('[data-day="friday"][data-meal="lunch"]').textContent,
+                snack: document.querySelector('[data-day="friday"][data-meal="afternoon"]').textContent
             }
-        };
-        
-        // Apply default menu items
-        Object.keys(defaultMenu).forEach(day => {
-            Object.keys(defaultMenu[day]).forEach(meal => {
-                const element = defaultWeek.querySelector(`[data-day="${day}"][data-meal="${meal}"]`);
-                if (element) {
-                    element.textContent = defaultMenu[day][meal];
-                }
-            });
-        });
-        
-        menuWeeks.appendChild(defaultWeek);
-        
-        // Save default menu to localStorage
-        const defaultWeekData = {
-            weekNumber: 1,
-            date: 'Week of January 1, 2024',
-            menuItems: defaultMenu
-        };
-        localStorage.setItem('menuWeeks', JSON.stringify([defaultWeekData]));
-    } else {
-        // Load saved weeks
-        weeksData.forEach(weekData => {
-            const week = createWeekTemplate(weekData.weekNumber, weekData.date);
-            
-            // Set menu items
-            Object.keys(weekData.menuItems).forEach(day => {
-                Object.keys(weekData.menuItems[day]).forEach(meal => {
-                    const element = week.querySelector(`[data-day="${day}"][data-meal="${meal}"]`);
-                    if (element) {
-                        element.textContent = weekData.menuItems[day][meal];
-                    }
-                });
-            });
-            
-            menuWeeks.appendChild(week);
-            
-            // Add delete functionality
-            const deleteBtn = week.querySelector('.delete-week');
-            deleteBtn.style.display = isLoggedIn ? 'flex' : 'none';
-            deleteBtn.addEventListener('click', function() {
-                if (confirm('Are you sure you want to delete this week?')) {
-                    week.remove();
-                    renumberWeeks();
-                    saveMenuToStorage(); // Save after deletion
-                    showSuccessMessage('Week deleted successfully');
-                }
-            });
-        });
-    }
+        }
+    };
+
+    // Save to localStorage for admin use
+    localStorage.setItem('menuData', JSON.stringify(menuData));
     
-    updateMenuEditButtons();
+    // Show success message
+    const successMessage = document.getElementById('menu-success');
+    successMessage.textContent = 'Menu saved successfully!';
+    successMessage.style.display = 'block';
+    setTimeout(() => {
+        successMessage.style.display = 'none';
+    }, 3000);
 }
 
 // Handle adding new week
@@ -461,13 +451,13 @@ document.getElementById('add-week').addEventListener('click', function() {
         if (confirm('Are you sure you want to delete this week?')) {
             newWeek.remove();
             renumberWeeks();
-            saveMenuToStorage(); // Save after deletion
+            saveMenuData(); // Save after deletion
             showSuccessMessage('Week deleted successfully');
         }
     });
     
     // Save after adding new week
-    saveMenuToStorage();
+    saveMenuData();
     showSuccessMessage('New week added successfully');
 });
 
@@ -483,42 +473,15 @@ function renumberWeeks() {
     });
 }
 
-// Save menu data to localStorage
-function saveMenuToStorage() {
-    const menuWeeks = document.getElementById('menu-weeks');
-    const weeksData = [];
-    
-    menuWeeks.querySelectorAll('.menu-week').forEach(week => {
-        const weekData = {
-            weekNumber: week.dataset.weekNumber,
-            date: week.querySelector('.week-date').textContent,
-            menuItems: {}
-        };
-        
-        week.querySelectorAll('.editable').forEach(item => {
-            const day = item.dataset.day;
-            const meal = item.dataset.meal;
-            if (!weekData.menuItems[day]) {
-                weekData.menuItems[day] = {};
-            }
-            weekData.menuItems[day][meal] = item.textContent;
-        });
-        
-        weeksData.push(weekData);
-    });
-    
-    localStorage.setItem('menuWeeks', JSON.stringify(weeksData));
-}
-
-// Update menu item form submission to save all weeks
+// Update menu item form submission
 document.getElementById('edit-menu-form').addEventListener('submit', function(e) {
     e.preventDefault();
     if (currentEditingItem) {
         const newText = document.getElementById('edit-menu-text').value;
         currentEditingItem.textContent = newText;
         
-        // Save all weeks to localStorage
-        saveMenuToStorage();
+        // Save menu data
+        saveMenuData();
         
         closeModal('edit-menu-modal');
         showSuccessMessage('Menu item updated successfully');
@@ -539,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
         adminBtn.querySelector('span').textContent = 'Admin Logout';
     }
     
-    // Load menu data
+    // Load menu data from GitHub
     loadMenuData();
 });
 
@@ -790,73 +753,4 @@ function scrollToTop() {
         top: 0,
         behavior: 'smooth'
     });
-}
-
-// Function to fetch menu data from GitHub
-async function fetchMenuData() {
-    try {
-        const response = await fetch('https://raw.githubusercontent.com/Squidy33/daycare/main/data/menu.json');
-        const data = await response.json();
-        return data.week;
-    } catch (error) {
-        console.error('Error fetching menu data:', error);
-        return null;
-    }
-}
-
-// Function to load menu data
-async function loadMenuData() {
-    const menuData = await fetchMenuData();
-    if (menuData) {
-        Object.keys(menuData).forEach(day => {
-            const dayData = menuData[day];
-            document.getElementById(`${day}-breakfast`).value = dayData.breakfast;
-            document.getElementById(`${day}-lunch`).value = dayData.lunch;
-            document.getElementById(`${day}-snack`).value = dayData.snack;
-        });
-    }
-}
-
-// Function to save menu data
-async function saveMenuData() {
-    const menuData = {
-        week: {
-            monday: {
-                breakfast: document.getElementById('monday-breakfast').value,
-                lunch: document.getElementById('monday-lunch').value,
-                snack: document.getElementById('monday-snack').value
-            },
-            tuesday: {
-                breakfast: document.getElementById('tuesday-breakfast').value,
-                lunch: document.getElementById('tuesday-lunch').value,
-                snack: document.getElementById('tuesday-snack').value
-            },
-            wednesday: {
-                breakfast: document.getElementById('wednesday-breakfast').value,
-                lunch: document.getElementById('wednesday-lunch').value,
-                snack: document.getElementById('wednesday-snack').value
-            },
-            thursday: {
-                breakfast: document.getElementById('thursday-breakfast').value,
-                lunch: document.getElementById('thursday-lunch').value,
-                snack: document.getElementById('thursday-snack').value
-            },
-            friday: {
-                breakfast: document.getElementById('friday-breakfast').value,
-                lunch: document.getElementById('friday-lunch').value,
-                snack: document.getElementById('friday-snack').value
-            }
-        }
-    };
-
-    // Save to localStorage for admin use
-    localStorage.setItem('menuData', JSON.stringify(menuData));
-    
-    // Show success message
-    const successMessage = document.getElementById('menu-success');
-    successMessage.textContent = 'Menu saved successfully!';
-    successMessage.style.display = 'block';
-    setTimeout(() => {
-        successMessage.style.display = 'none';
-    }, 3000);
 }
