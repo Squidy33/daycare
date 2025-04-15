@@ -565,7 +565,7 @@ function checkGalleryPassword() {
 }
 
 // Add Enter key support for gallery password
-document.getElementById('gallery-password').addEventListener('keypress', function(event) {
+document.getElementById('gallery-password')?.addEventListener('keypress', function(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
         checkGalleryPassword();
@@ -574,9 +574,9 @@ document.getElementById('gallery-password').addEventListener('keypress', functio
 
 // Update gallery admin controls visibility
 function updateGalleryAdminControls() {
-    const adminControls = document.querySelector('.gallery-admin-controls');
-    if (adminControls) {
-        adminControls.style.display = isLoggedIn ? 'block' : 'none';
+    const adminSection = document.querySelector('.admin-section');
+    if (adminSection) {
+        adminSection.style.display = isLoggedIn ? 'block' : 'none';
     }
 }
 
@@ -732,8 +732,8 @@ function initializeDefaultStory() {
 
 // Initialize gallery when the page loads
 document.addEventListener('DOMContentLoaded', function() {
-    const galleryContent = document.getElementById('gallery-content');
-    if (galleryContent) {
+    // Initialize gallery functionality if we're on the gallery page
+    if (document.querySelector('.gallery-grid')) {
         initializeDefaultStory();
         loadGalleryImages();
         updateGalleryAdminControls();
@@ -750,14 +750,14 @@ function enlargeImage(src) {
 }
 
 // Close enlarged image modal
-document.querySelector('.close-enlarged').addEventListener('click', function() {
+document.querySelector('.close-enlarged')?.addEventListener('click', function() {
     const enlargedModal = document.getElementById('enlarged-image-modal');
     enlargedModal.style.display = 'none';
     document.body.style.overflow = 'auto';
 });
 
 // Close enlarged image modal when clicking outside
-document.getElementById('enlarged-image-modal').addEventListener('click', function(e) {
+document.getElementById('enlarged-image-modal')?.addEventListener('click', function(e) {
     if (e.target === this) {
         this.style.display = 'none';
         document.body.style.overflow = 'auto';
@@ -768,7 +768,7 @@ document.getElementById('enlarged-image-modal').addEventListener('click', functi
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         const enlargedModal = document.getElementById('enlarged-image-modal');
-        if (enlargedModal.style.display === 'block') {
+        if (enlargedModal?.style.display === 'block') {
             enlargedModal.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
