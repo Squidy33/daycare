@@ -1,26 +1,83 @@
-<div class="container">
-    <h1>Our Stories</h1>
-    
-    <div class="admin-section" style="display: none;">
-        <form class="gallery-upload-form">
-            <h2>Add New Story</h2>
-            <div class="form-group">
-                <label for="gallery-upload">Upload Image:</label>
-                <input type="file" id="gallery-upload" accept="image/*" required>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery - Hina's Daycare</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo">Hina's Daycare</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#about">About</a>
+                <a href="index.html#programs">Programs</a>
+                <a href="index.html#menu">Menu</a>
+                <a href="gallery.html" class="active">Gallery</a>
+                <a href="index.html#contact">Contact</a>
             </div>
-            <div class="form-group">
-                <label for="story-title">Story Title:</label>
-                <input type="text" id="story-title" required>
-            </div>
-            <div class="form-group">
-                <label for="story-description">Story Description:</label>
-                <textarea id="story-description" required></textarea>
-            </div>
-            <button type="submit" class="btn">Add Story</button>
-        </form>
-    </div>
+        </nav>
+    </header>
 
-    <div class="gallery-grid">
-        <!-- Stories will be dynamically loaded here -->
-    </div>
-</div> 
+    <main>
+        <!-- Gallery Login Section -->
+        <div id="gallery-login" class="gallery-login">
+            <h2>Enter Password to View Gallery</h2>
+            <div class="password-form">
+                <input type="password" id="gallery-password" placeholder="Enter password">
+                <button onclick="checkGalleryPassword()">Submit</button>
+            </div>
+            <div id="gallery-error" class="error-message"></div>
+        </div>
+
+        <!-- Gallery Content Section -->
+        <div id="gallery-content" class="container" style="display: none;">
+            <h1>Our Stories</h1>
+            
+            <div class="admin-section" style="display: none;">
+                <form class="gallery-upload-form" onsubmit="addStory(event)">
+                    <h2>Add New Story</h2>
+                    <div class="form-group">
+                        <label for="gallery-upload">Upload Image:</label>
+                        <input type="file" id="gallery-upload" accept="image/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="story-title">Story Title:</label>
+                        <input type="text" id="story-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="story-description">Story Description:</label>
+                        <textarea id="story-description" required></textarea>
+                    </div>
+                    <button type="submit" class="btn">Add Story</button>
+                </form>
+            </div>
+
+            <div class="gallery-controls">
+                <select id="gallery-sort" onchange="sortGalleryImages()">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                </select>
+            </div>
+
+            <div class="gallery-grid">
+                <!-- Stories will be dynamically loaded here -->
+            </div>
+        </div>
+
+        <!-- Enlarged Image Modal -->
+        <div id="enlarged-image-modal" class="modal">
+            <span class="close-modal close-enlarged">&times;</span>
+            <img class="enlarged-image" src="" alt="Enlarged image">
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Hina's Daycare. All rights reserved.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html> 

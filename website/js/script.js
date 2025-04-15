@@ -555,6 +555,7 @@ function checkGalleryPassword() {
         galleryContent.style.display = 'block';
         errorMessage.classList.remove('show');
         document.getElementById('gallery-password').value = '';
+        initializeDefaultStory(); // Initialize default story if needed
         loadGalleryImages();
         updateGalleryAdminControls();
     } else {
@@ -574,20 +575,25 @@ document.getElementById('gallery-password').addEventListener('keypress', functio
 // Update gallery admin controls visibility
 function updateGalleryAdminControls() {
     const adminControls = document.querySelector('.gallery-admin-controls');
-    adminControls.style.display = isLoggedIn ? 'block' : 'none';
+    if (adminControls) {
+        adminControls.style.display = isLoggedIn ? 'block' : 'none';
+    }
 }
 
 // Load gallery stories from localStorage
 function loadGalleryImages() {
     const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
     const storiesContainer = document.querySelector('.gallery-grid');
+    
+    if (!storiesContainer) return; // Exit if container not found
+    
     storiesContainer.innerHTML = '';
     
     savedStories.forEach(story => {
         const storyCard = document.createElement('div');
         storyCard.className = 'story-card';
         storyCard.innerHTML = `
-            <img src="${story.image}" alt="${story.title}" class="story-image">
+            <img src="${story.image}" alt="${story.title}" class="story-image" onclick="enlargeImage('${story.image}')">
             <div class="story-content">
                 <h3 class="story-title">${story.title}</h3>
                 <p class="story-description">${story.description}</p>
@@ -724,10 +730,14 @@ function initializeDefaultStory() {
     }
 }
 
-// Call initializeDefaultStory when the page loads
+// Initialize gallery when the page loads
 document.addEventListener('DOMContentLoaded', function() {
-    initializeDefaultStory();
-    loadGalleryImages();
+    const galleryContent = document.getElementById('gallery-content');
+    if (galleryContent) {
+        initializeDefaultStory();
+        loadGalleryImages();
+        updateGalleryAdminControls();
+    }
 });
 
 // Enlarge image function
