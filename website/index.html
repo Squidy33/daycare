@@ -740,12 +740,12 @@
     <div id="gallery-modal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <h3>Photo Gallery</h3>
+            <h3>Stories</h3>
             <div id="gallery-login" class="gallery-login">
-                <p>Please enter the password to view the gallery:</p>
+                <p>Please enter the password to view the stories:</p>
                 <input type="password" id="gallery-password" placeholder="Enter password">
                 <div class="error-message" id="gallery-error"></div>
-                <button onclick="checkGalleryPassword()">View Gallery</button>
+                <button onclick="checkGalleryPassword()">View Stories</button>
             </div>
             <div id="gallery-content" class="gallery-content" style="display: none;">
                 <div class="gallery-controls">
@@ -758,14 +758,16 @@
                     </div>
                     <div class="gallery-admin-controls" style="display: none;">
                         <form class="gallery-upload-form" onsubmit="event.preventDefault(); handleImageUpload();">
+                            <input type="text" id="story-title" placeholder="Story Title" required>
+                            <textarea id="story-description" placeholder="Story Description" required></textarea>
                             <input type="file" id="gallery-image-upload" accept="image/*" required>
                             <input type="date" id="gallery-image-date" required>
-                            <button type="submit">Add Image</button>
+                            <button type="submit">Add Story</button>
                         </form>
                     </div>
                 </div>
                 <div class="gallery-grid">
-                    <!-- Images will be loaded dynamically -->
+                    <!-- Stories will be loaded dynamically -->
                 </div>
             </div>
         </div>

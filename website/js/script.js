@@ -577,67 +577,158 @@ function updateGalleryAdminControls() {
     adminControls.style.display = isLoggedIn ? 'block' : 'none';
 }
 
-// Load gallery images from localStorage
+// Load gallery stories from localStorage
 function loadGalleryImages() {
-    const galleryGrid = document.querySelector('.gallery-grid');
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
+    const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
+    const storiesContainer = document.querySelector('.gallery-grid');
+    storiesContainer.innerHTML = '';
     
-    galleryGrid.innerHTML = ''; // Clear existing images
-    
-    savedImages.forEach(image => {
-        const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item';
-        
-        galleryItem.innerHTML = `
-            <div class="gallery-date-container">
-                <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
-                ${isLoggedIn ? `
-                    <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
-                        <i class="fas fa-calendar-edit"></i>
-                    </button>
-                ` : ''}
+    savedStories.forEach(story => {
+        const storyCard = document.createElement('div');
+        storyCard.className = 'story-card';
+        storyCard.innerHTML = `
+            <img src="${story.image}" alt="${story.title}" class="story-image">
+            <div class="story-content">
+                <h3 class="story-title">${story.title}</h3>
+                <p class="story-description">${story.description}</p>
+                <div class="story-date">${story.date}</div>
             </div>
-            <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
             ${isLoggedIn ? `
-                <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="story-admin-controls">
+                    <button class="edit" onclick="editStory('${story.id}')">Edit</button>
+                    <button class="delete" onclick="deleteStory('${story.id}')">Delete</button>
+                </div>
             ` : ''}
         `;
-        
-        galleryGrid.appendChild(galleryItem);
+        storiesContainer.appendChild(storyCard);
     });
 }
 
-// Sort gallery images
+// Sort gallery stories
 function sortGalleryImages() {
     const sortBy = document.getElementById('gallery-sort').value;
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
+    const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
     
-    savedImages.sort((a, b) => {
+    savedStories.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
         return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
     });
     
-    localStorage.setItem('galleryImages', JSON.stringify(savedImages));
+    localStorage.setItem('galleryStories', JSON.stringify(savedStories));
     loadGalleryImages();
 }
 
-// Edit image date
-function editImageDate(imageId) {
-    const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-    const image = savedImages.find(img => img.id === imageId);
+// Edit story date
+function editStoryDate(storyId) {
+    const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
+    const story = savedStories.find(s => s.id === storyId);
     
-    if (image) {
-        const newDate = prompt('Enter new date (YYYY-MM-DD):', image.date);
+    if (story) {
+        const newDate = prompt('Enter new date (YYYY-MM-DD):', story.date);
         if (newDate) {
-            image.date = newDate;
-            localStorage.setItem('galleryImages', JSON.stringify(savedImages));
+            story.date = newDate;
+            localStorage.setItem('galleryStories', JSON.stringify(savedStories));
             loadGalleryImages();
         }
     }
 }
+
+// Edit story content
+function editStory(storyId) {
+    const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
+    const story = savedStories.find(s => s.id === storyId);
+    
+    if (story) {
+        const newTitle = prompt('Enter new title:', story.title);
+        if (newTitle) {
+            story.title = newTitle;
+            const newDescription = prompt('Enter new description:', story.description);
+            if (newDescription) {
+                story.description = newDescription;
+                localStorage.setItem('galleryStories', JSON.stringify(savedStories));
+                loadGalleryImages();
+            }
+        }
+    }
+}
+
+// Handle story upload
+function addStory(event) {
+    event.preventDefault();
+    
+    const fileInput = document.getElementById('gallery-upload');
+    const titleInput = document.getElementById('story-title');
+    const descriptionInput = document.getElementById('story-description');
+    
+    if (!fileInput.files[0] || !titleInput.value || !descriptionInput.value) {
+        alert("Please fill in all fields and select an image.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
+        const newStory = {
+            id: Date.now().toString(),
+            image: e.target.result,
+            title: titleInput.value,
+            description: descriptionInput.value,
+            date: new Date().toISOString().split('T')[0]
+        };
+        
+        savedStories.push(newStory);
+        localStorage.setItem('galleryStories', JSON.stringify(savedStories));
+        
+        // Clear form
+        fileInput.value = '';
+        titleInput.value = '';
+        descriptionInput.value = '';
+        
+        // Reload stories
+        loadGalleryImages();
+        alert("Story added successfully!");
+    };
+    
+    reader.readAsDataURL(fileInput.files[0]);
+}
+
+// Delete story
+function deleteStory(storyId) {
+    if (!confirm("Are you sure you want to delete this story?")) {
+        return;
+    }
+
+    const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
+    const updatedStories = savedStories.filter(story => story.id !== storyId);
+    localStorage.setItem('galleryStories', JSON.stringify(updatedStories));
+    loadGalleryImages();
+    alert("Story deleted successfully!");
+}
+
+// Initialize with a default story
+function initializeDefaultStory() {
+    const savedStories = JSON.parse(localStorage.getItem('galleryStories')) || [];
+    
+    if (savedStories.length === 0) {
+        const defaultStory = {
+            id: Date.now().toString(),
+            title: 'Chilli Milli',
+            description: 'Today we had a special visitor in our daycare - a cute little candy wrapper named Chilli Milli! The children were fascinated by its bright colors and learned about the importance of proper waste disposal and recycling. This sparked a wonderful discussion about taking care of our environment and making sure we clean up after ourselves.',
+            image: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx4eHRoaHSQrJyEkKSM4Mjc1MjM3QkFINz5BQTY0RkNCUjdOT1FVVk1DWUJLR1JVWlH/2wBDAR',
+            date: new Date().toISOString().split('T')[0]
+        };
+        
+        savedStories.push(defaultStory);
+        localStorage.setItem('galleryStories', JSON.stringify(savedStories));
+    }
+}
+
+// Call initializeDefaultStory when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDefaultStory();
+    loadGalleryImages();
+});
 
 // Enlarge image function
 function enlargeImage(src) {
@@ -674,100 +765,6 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// Handle image upload with improved error handling
-function handleImageUpload() {
-    if (!isLoggedIn) return;
-    
-    const imageFile = document.getElementById('gallery-image-upload').files[0];
-    const date = document.getElementById('gallery-image-date').value;
-    
-    if (!imageFile) {
-        showErrorMessage('Please select an image file');
-        return;
-    }
-    
-    if (!date) {
-        showErrorMessage('Please select a date');
-        return;
-    }
-    
-    // Check file size (max 5MB)
-    if (imageFile.size > 5 * 1024 * 1024) {
-        showErrorMessage('Image size should be less than 5MB');
-        return;
-    }
-    
-    // Check file type
-    if (!imageFile.type.startsWith('image/')) {
-        showErrorMessage('Please select a valid image file');
-        return;
-    }
-    
-    addGalleryImage(imageFile, date);
-    document.getElementById('gallery-image-upload').value = '';
-    document.getElementById('gallery-image-date').value = '';
-}
-
-// Show error message
-function showErrorMessage(message) {
-    const errorMessage = document.createElement('div');
-    errorMessage.className = 'error-message show';
-    errorMessage.textContent = message;
-    
-    const form = document.querySelector('.gallery-upload-form');
-    form.insertBefore(errorMessage, form.firstChild);
-    
-    setTimeout(() => {
-        errorMessage.remove();
-    }, 3000);
-}
-
-// Add new image to gallery with improved error handling
-function addGalleryImage(imageFile, date) {
-    if (!isLoggedIn) return;
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-            const newImage = {
-                id: Date.now().toString(),
-                src: e.target.result,
-                alt: 'Daycare Activity',
-                date: date
-            };
-            
-            savedImages.push(newImage);
-            localStorage.setItem('galleryImages', JSON.stringify(savedImages));
-            loadGalleryImages();
-            showSuccessMessage('Image added successfully');
-        } catch (error) {
-            showErrorMessage('Error saving image. Please try again.');
-            console.error('Error saving image:', error);
-        }
-    };
-    
-    reader.onerror = function() {
-        showErrorMessage('Error reading image file. Please try again.');
-    };
-    
-    reader.readAsDataURL(imageFile);
-}
-
-// Delete image from gallery (admin only)
-function deleteGalleryImage(imageId) {
-    if (!isLoggedIn) return;
-    
-    if (confirm('Are you sure you want to delete this image?')) {
-        const savedImages = JSON.parse(localStorage.getItem('galleryImages')) || [];
-        const updatedImages = savedImages.filter(img => img.id !== imageId);
-        localStorage.setItem('galleryImages', JSON.stringify(updatedImages));
-        loadGalleryImages();
-        showSuccessMessage('Image deleted successfully');
-    }
-}
-
 // Reset gallery view when modal is closed
 document.getElementById('gallery-modal').addEventListener('click', function(e) {
     if (e.target === this) {
@@ -791,3 +788,123 @@ function scrollToTop() {
         behavior: 'smooth'
     });
 }
+
+// Story Management Functions
+function loadStories() {
+    const storiesRef = ref(database, 'stories');
+    onValue(storiesRef, (snapshot) => {
+        const storiesData = snapshot.val() || {};
+        const galleryGrid = document.querySelector('.gallery-grid');
+        galleryGrid.innerHTML = '';
+
+        Object.entries(storiesData).forEach(([key, story]) => {
+            const storyCard = createStoryCard(key, story);
+            galleryGrid.appendChild(storyCard);
+        });
+    });
+}
+
+function createStoryCard(storyId, story) {
+    const card = document.createElement('div');
+    card.className = 'story-card';
+    card.innerHTML = `
+        <img src="${story.imageUrl}" alt="${story.title}" class="story-image">
+        <div class="story-content">
+            <h3 class="story-title">${story.title}</h3>
+            <p class="story-description">${story.description}</p>
+            <p class="story-date">${new Date(story.date).toLocaleDateString()}</p>
+            ${isAdmin() ? `
+                <div class="story-controls">
+                    <button class="edit-story" onclick="editStory('${storyId}')">Edit</button>
+                    <button class="delete-story" onclick="deleteStory('${storyId}')">Delete</button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    return card;
+}
+
+async function uploadStory(event) {
+    event.preventDefault();
+    const form = event.target;
+    const imageFile = form.querySelector('#storyImage').files[0];
+    const title = form.querySelector('#storyTitle').value;
+    const description = form.querySelector('#storyDescription').value;
+
+    if (!imageFile || !title || !description) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    try {
+        // Upload image to Firebase Storage
+        const storageRef = ref(storage, `stories/${Date.now()}_${imageFile.name}`);
+        const snapshot = await uploadBytes(storageRef, imageFile);
+        const imageUrl = await getDownloadURL(snapshot.ref);
+
+        // Save story data to Firebase Database
+        const storiesRef = ref(database, 'stories');
+        const newStoryRef = push(storiesRef);
+        await set(newStoryRef, {
+            imageUrl,
+            title,
+            description,
+            date: new Date().toISOString()
+        });
+
+        form.reset();
+        alert('Story uploaded successfully!');
+    } catch (error) {
+        console.error('Error uploading story:', error);
+        alert('Error uploading story. Please try again.');
+    }
+}
+
+async function deleteStory(storyId) {
+    if (!confirm('Are you sure you want to delete this story?')) return;
+
+    try {
+        const storyRef = ref(database, `stories/${storyId}`);
+        await remove(storyRef);
+        alert('Story deleted successfully!');
+    } catch (error) {
+        console.error('Error deleting story:', error);
+        alert('Error deleting story. Please try again.');
+    }
+}
+
+async function editStory(storyId) {
+    const storyRef = ref(database, `stories/${storyId}`);
+    const snapshot = await get(storyRef);
+    const story = snapshot.val();
+
+    if (!story) {
+        alert('Story not found');
+        return;
+    }
+
+    const newTitle = prompt('Enter new title:', story.title);
+    const newDescription = prompt('Enter new description:', story.description);
+
+    if (newTitle === null || newDescription === null) return;
+
+    try {
+        await update(storyRef, {
+            title: newTitle,
+            description: newDescription
+        });
+        alert('Story updated successfully!');
+    } catch (error) {
+        console.error('Error updating story:', error);
+        alert('Error updating story. Please try again.');
+    }
+}
+
+// Initialize story functionality when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const storyForm = document.querySelector('#storyUploadForm');
+    if (storyForm) {
+        storyForm.addEventListener('submit', uploadStory);
+        loadStories();
+    }
+});
