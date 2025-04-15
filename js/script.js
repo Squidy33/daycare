@@ -361,9 +361,9 @@ async function loadMenuData() {
         const menuData = snapshot.val();
         
         if (menuData) {
-            const menuWeeks = document.getElementById('menu-weeks');
-            menuWeeks.innerHTML = ''; // Clear existing weeks
-            
+    const menuWeeks = document.getElementById('menu-weeks');
+    menuWeeks.innerHTML = ''; // Clear existing weeks
+    
             // Create weeks based on Firebase data
             Object.keys(menuData).forEach((weekKey, index) => {
                 const weekData = menuData[weekKey];
@@ -417,27 +417,27 @@ async function saveMenuData() {
             weeksData[weekKey] = {
                 date: week.querySelector('.week-date').textContent,
                 items: {
-                    monday: {
+            monday: {
                         breakfast: week.querySelector('[data-day="monday"][data-meal="morning"]').textContent,
                         lunch: week.querySelector('[data-day="monday"][data-meal="lunch"]').textContent,
                         snack: week.querySelector('[data-day="monday"][data-meal="afternoon"]').textContent
-                    },
-                    tuesday: {
+            },
+            tuesday: {
                         breakfast: week.querySelector('[data-day="tuesday"][data-meal="morning"]').textContent,
                         lunch: week.querySelector('[data-day="tuesday"][data-meal="lunch"]').textContent,
                         snack: week.querySelector('[data-day="tuesday"][data-meal="afternoon"]').textContent
-                    },
-                    wednesday: {
+            },
+            wednesday: {
                         breakfast: week.querySelector('[data-day="wednesday"][data-meal="morning"]').textContent,
                         lunch: week.querySelector('[data-day="wednesday"][data-meal="lunch"]').textContent,
                         snack: week.querySelector('[data-day="wednesday"][data-meal="afternoon"]').textContent
-                    },
-                    thursday: {
+            },
+            thursday: {
                         breakfast: week.querySelector('[data-day="thursday"][data-meal="morning"]').textContent,
                         lunch: week.querySelector('[data-day="thursday"][data-meal="lunch"]').textContent,
                         snack: week.querySelector('[data-day="thursday"][data-meal="afternoon"]').textContent
-                    },
-                    friday: {
+            },
+            friday: {
                         breakfast: week.querySelector('[data-day="friday"][data-meal="morning"]').textContent,
                         lunch: week.querySelector('[data-day="friday"][data-meal="lunch"]').textContent,
                         snack: week.querySelector('[data-day="friday"][data-meal="afternoon"]').textContent
@@ -478,7 +478,7 @@ document.getElementById('add-week').addEventListener('click', async () => {
     if (!isLoggedIn) return;
     
     try {
-        const menuWeeks = document.getElementById('menu-weeks');
+    const menuWeeks = document.getElementById('menu-weeks');
         const weekCount = menuWeeks.children.length + 1;
         const week = createWeekTemplate(weekCount, `Week ${weekCount}`);
         
@@ -557,7 +557,7 @@ async function loadGalleryImages() {
     try {
         const snapshot = await database.ref('gallery').once('value');
         const galleryData = snapshot.val();
-        const galleryGrid = document.querySelector('.gallery-grid');
+    const galleryGrid = document.querySelector('.gallery-grid');
         galleryGrid.innerHTML = ''; // Clear existing images
         
         if (galleryData) {
@@ -686,29 +686,29 @@ async function sortGalleryImages() {
             galleryGrid.innerHTML = '';
             
             images.forEach(image => {
-                const galleryItem = document.createElement('div');
-                galleryItem.className = 'gallery-item';
-                
-                galleryItem.innerHTML = `
-                    <div class="gallery-date-container">
-                        <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
-                        ${isLoggedIn ? `
-                            <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
-                                <i class="fas fa-calendar-edit"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                    <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
-                    ${isLoggedIn ? `
-                        <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    ` : ''}
-                `;
-                
-                galleryGrid.appendChild(galleryItem);
-            });
-        }
+        const galleryItem = document.createElement('div');
+        galleryItem.className = 'gallery-item';
+        
+        galleryItem.innerHTML = `
+            <div class="gallery-date-container">
+                <span class="gallery-date" data-image-id="${image.id}">${image.date}</span>
+                ${isLoggedIn ? `
+                    <button class="edit-date-btn" onclick="editImageDate('${image.id}')">
+                        <i class="fas fa-calendar-edit"></i>
+                    </button>
+                ` : ''}
+            </div>
+            <img src="${image.src}" alt="${image.alt}" onclick="enlargeImage(this.src)">
+            ${isLoggedIn ? `
+                <button class="delete-image" onclick="deleteGalleryImage('${image.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
+        `;
+        
+        galleryGrid.appendChild(galleryItem);
+    });
+}
     } catch (error) {
         console.error('Error sorting gallery images:', error);
         showErrorMessage('Error sorting gallery images. Please try again.');
